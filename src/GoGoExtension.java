@@ -38,6 +38,7 @@ public class GoGoExtension extends org.nlogo.api.DefaultClassManager {
     primManager.addPrimitive("stop-burst-mode", new GoGoStopBurstMode());
     primManager.addPrimitive("burst-value", new GoGoSensorBurstValue());
     primManager.addPrimitive("sensor", new GoGoSensor());
+    primManager.addPrimitive("object", new GoGoSSN());
     //primManager.addPrimitive( "switch", new GoGoSwitch() ) ;
   }
 
@@ -443,6 +444,25 @@ public class GoGoExtension extends org.nlogo.api.DefaultClassManager {
         return Double.valueOf(controller.readSensor(sensor));
       } catch (RuntimeException e) {
         return Double.valueOf(0);
+      }
+    }
+  }
+
+
+  public static class GoGoSSN extends DefaultReporter {
+    public Syntax getSyntax() {
+      int[] right = {Syntax.NumberType()};
+      return Syntax.reporterSyntax(right, Syntax.NumberType());
+    }
+
+    public Object report(Argument args[], Context context)
+        throws ExtensionException, org.nlogo.api.LogoException {
+
+      int ssnID = args[0].getIntValue();
+      try {
+        return controller.readSSN(ssnID);
+      } catch (RuntimeException e) {
+        return false;
       }
     }
   }

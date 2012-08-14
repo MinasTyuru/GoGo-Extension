@@ -32,7 +32,6 @@ public class GoGoController {
 
   public static final byte CMD_PING = (byte) 0x00;
   public static final byte CMD_READ_SENSOR = (byte) 0x20;
-  public static final byte CMD_READ_EXTENDED_SENSOR = (byte) 0xE0;
   public static final byte CMD_OUTPUT_PORT_ON = (byte) 0x40;
   public static final byte CMD_OUTPUT_PORT_OFF = (byte) 0x44;
   public static final byte CMD_OUTPUT_PORT_RD = (byte) 0x48;
@@ -42,6 +41,10 @@ public class GoGoController {
   public static final byte CMD_OUTPUT_PORT_POWER = (byte) 0x60;
   public static final byte CMD_TALK_TO_OUTPUT_PORT = (byte) 0x80;
   public static final byte CMD_SET_BURST_MODE = (byte) 0xA0;
+  
+  //Extended commands
+  public static final byte CMD_READ_EXTENDED_SENSOR = (byte) 0xE0; //0b11100000
+  public static final byte CMD_READ_EXTENDED_SENSOR = (byte) 0xE4; //0b111001??
 
   public static final byte CMD_LED_ON = (byte) 0xC0;
   public static final byte CMD_LED_OFF = (byte) 0xC1;
@@ -394,8 +397,6 @@ public class GoGoController {
   //Reads a sensor with number >8.
   //Such sensors use a different serial format.
   public int readExtendedSensor(int sensor) {
-    int sensorVal = 0;
-    
     //Turn sensor number (9+) into 0+
     sensor = sensor - 9;
     
@@ -411,7 +412,7 @@ public class GoGoController {
       writeCommand(command);
       synchronized (inputStream) { //Seize input stream to prevent simultaneous reads
         waitForReplyHeader();
-        sensorVal = readInt() << 8;
+        int sensorVal = readInt() << 8;
         sensorVal += readInt();
       }
     } catch (IOException e) {
@@ -419,6 +420,42 @@ public class GoGoController {
     }
 
     return sensorVal;
+  }
+  
+  
+  //Reads an SSN with ID ssnID
+  //That is: determines whether a node with ID (I2C slave address) ssnID
+  //is currently connected to the GoGoSense network.
+  //A
+  public boolean readSSN(int ssnID) {
+    if ((ssnID < 1) || (ssnID > 1024))
+      throw new RuntimeException("SSN ID out of range: " + ssnID);
+	  
+	//Byte 1 has command and first 2 bits of address
+    int byte1 = CMD_READ_SSN | (ssnID >> 8);
+	//Byte 2 has lower 8 bits of address
+	int byte2 = ssnID & 0xFF;
+
+    try {
+      writeCommand(new byte[]{ (byte) byte1, (byte) byte2 });
+      synchronized (inputStream) {
+        waitForReplyHeader();
+		int reply = readInt();
+		
+		//SSN not present.
+		if (reply == 0)
+		  return false;
+		//SSN present.
+		else if (reply == 1)
+		  return false;
+		//SSN not present.
+		else
+		  throw new RuntimeException("GoGo Board returned unexpected SSN data (not 1 or 0): " + reply);
+      }
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
 
